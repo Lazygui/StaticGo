@@ -1,0 +1,32 @@
+{
+  "name": "StaticGo",
+  "version": "1.0.0",
+  "description": "",
+  "license": "MIT",
+  "author": "zhouzhijun",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "dist": "electron-builder --win --x64 --publish=never"
+  },
+  "build": {
+    "appId": "com.example.html-exe",
+    "productName": "StaticGo",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "StaticGo.ico"
+    }
+  },
+  "devDependencies": {
+    "electron": "^38.1.1",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
