@@ -19,7 +19,8 @@
     },
     "win": {
       "target": "portable",
-      "icon": "StaticGo.ico"
+      "icon": "StaticGo.ico",
+      "artifactName": "${productName}.exe"
     }
   },
   "devDependencies": {
