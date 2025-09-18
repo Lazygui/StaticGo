@@ -15,7 +15,7 @@
     "appId": "com.example.html-exe",
     "productName": "StaticGo",
     "directories": {
-      "output": "dist"
+      "output": "go"
     },
     "win": {
       "target": "portable",
