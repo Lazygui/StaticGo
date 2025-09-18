@@ -45,12 +45,10 @@ const createWindow = () => {
                      const app = express();
                      // 自定义静态文件中间件，为 HTML 文件禁用缓存
                      app.use((req, res, next) => {
-                            // 如果请求的是 HTML 文件
-                            if (req.path.endsWith('.html')) {
-                                   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // HTTP 1.1
-                                   res.setHeader('Pragma', 'no-cache'); // HTTP 1.0
-                                   res.setHeader('Expires', '0'); // Proxies
-                            }
+                            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // HTTP 1.1
+                            res.setHeader('Pragma', 'no-cache'); // HTTP 1.0
+                            res.setHeader('Expires', '0'); // Proxies
+
                             next();
                      });
                      app.use(express.static(dirPath));
