@@ -25,6 +25,7 @@
 
 ## 注意事项
 - 不支持反向代理
+- 不支持HTTPS
 
 ## 🚀 快速开始
 [下载地址](https://github.com/Lazygui/StaticGo)
