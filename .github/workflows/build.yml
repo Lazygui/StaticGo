@@ -1,37 +1,58 @@
 name: Build and Release StaticGo (Windows)
 
 on:
-  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'  # 仅当 Push 以 v 开头的 Tag（如 v1.0.0）时触发
 
 jobs:
-  build-windows:
-    name: Build for Windows
+  build-and-release:
+    name: Build & Release for Windows
     runs-on: windows-latest
 
     steps:
+      # 1. 拉取代码（确保获取到 Tag 信息）
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整 Git 历史，包括 Tag
 
+      # 2. 设置 Node.js 环境
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20  # 和你项目一致
 
+      # 3. 安装依赖
       - name: Install dependencies
         run: npm install
 
+      # 4. 构建 Windows 可执行文件（和现有流程一致）
       - name: Build the app (generate .exe)
         run: npm run dist
 
-      - name: Check for generated files
-        run: |
-          echo "Listing files in ./go ..."
-          dir go
+      # 5. 检查生成的产物（可选，调试用）
+      - name: List build artifacts
+        run: dir ./go  # 或 ls ./go（Linux/macOS）
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
+      # 6. 自动创建 GitHub Release 并上传 .exe
+      - name: Create Release & Upload .exe
+        uses: softprops/action-gh-release@v1
         with:
-          name: staticgo-windows-build
-          path: |
+          # 自动生成 Release 标题（如 v1.0.0）
+          tag_name: ${{ github.ref }}  
+          # 自动生成 Release 名称（和标题一致）
+          name: ${{ github.ref }}    
+          # 自动从 Git Tag 的 message 中提取发布日志（如果没有则用默认文案）
+          body: |
+            📦 自动发布版本：${{ github.ref_name }}
+
+            此版本包含最新的 Windows 可执行文件，请下载使用。
+            
+            构建时间：${{ github.run_number }}
+          # 上传 ./go 下的 .exe 文件
+          files: |
             ./go/*.exe
-          retention-days: 7
+          # 设置为“最新版本”（方便用户直接获取最新版）
+          draft: false
+          prerelease: false
