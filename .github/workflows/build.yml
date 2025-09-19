@@ -40,7 +40,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           # 自动生成 Release 标题（如 v1.0.0）
-          tag_name: v1.1.0
+          tag_name: ${{ github.ref_name }}
           # 自动生成 Release 名称（和标题一致）
           name: ${{ github.ref_name }}    
           # 自动从 Git Tag 的 message 中提取发布日志（如果没有则用默认文案）
