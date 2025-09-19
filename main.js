@@ -34,6 +34,7 @@ const createWindow = () => {
               }
        });
 
+
        // 处理启动静态文件服务器的请求
        ipcMain.handle('start-server', async (event, dirPath) => {
               if (staticServer) {
