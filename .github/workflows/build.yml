@@ -1,43 +1,42 @@
 name: Build and Release StaticGo (Windows)
 
 on:
-  # 方式1：手动触发（推荐先测试）
   workflow_dispatch:
-
-  # 方式2：每次推送到 main 分支时自动构建（可选）
-  # push:
-  #   branches: [ main ]
-
-  # 方式3：当打 tag（如 v1.0.0）时构建并发布（推荐用于正式版）
-  # push:
-  #   tags:
-  #     - 'v*'
 
 jobs:
   build-windows:
     name: Build for Windows
-    runs-on: windows-latest  # 使用 Windows 环境来构建 Windows 应用
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20  # 或你项目需要的版本，比如 18、20
+          node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
       - name: Build the app (generate .exe)
-        run: npm run dist
+        run: pnpm run build
 
-      - name: Upload Build Artifact (for testing / download)
+      - name: Check for generated files
+        run: |
+          echo "Listing files in ./go ..."
+          dir go
+
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: staticgo-windows-build
           path: |
-            go/*.exe       # electron-builder 默认输出到 ./go 目录
-            go/*.yml       # 可能还有其他配置文件
+            ./go/*.exe
           retention-days: 7
