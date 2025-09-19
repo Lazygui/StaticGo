@@ -330,6 +330,9 @@
   <!-- 自定义标题栏 -->
   <div class="title-bar">
     <div class="title-bar-left">
+      <button class="control-btn config-btn" onclick="openDataDirectory()" title="打开配置目录">
+        📁
+      </button>
     </div>
     <div class="title-bar-right">
       <div class="window-controls">
@@ -373,151 +376,243 @@
     </div>
 
   </div>
-
-  <script>
-    const { ipcRenderer } = require('electron');
-
-    let isServiceRunning = false;
-
-    function showStatus(message, type = 'info') {
-      const statusEl = document.getElementById('status');
-      if (!statusEl) return;
-
-      statusEl.className = 'status';
-      statusEl.innerHTML = message;
-      statusEl.classList.add(type);
-    }
-
-    async function copyAddress() {
-      const addressInput = document.querySelector('.address-input');
-      const portInput = document.getElementById('port');
-      const copyBtn = document.getElementById('copyBtn');
-
-      const address = addressInput.value || 'http://localhost:';
-      const port = portInput.value || '9999';
-      const fullAddress = `${address}${port}`;
-
-      try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(fullAddress);
-        } else {
-          const textArea = document.createElement('textarea');
-          textArea.value = fullAddress;
-          textArea.style.position = 'fixed';
-          textArea.style.left = '-999999px';
-          textArea.style.top = '-999999px';
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textArea);
-
-          if (!successful) throw new Error('复制失败');
-        }
-
-        const originalText = copyBtn.textContent;
-        copyBtn.textContent = '✓';
-        copyBtn.classList.add('copied');
-
-        showStatus(`✅ 地址已复制: ${fullAddress}`, 'success');
-
-        setTimeout(() => {
-          copyBtn.textContent = originalText;
-          copyBtn.classList.remove('copied');
-        }, 1500);
-
-      } catch (error) {
-        console.error('复制失败:', error);
-        showStatus('❌ 复制失败，请手动复制地址', 'error');
-      }
-    }
-
-    async function startService() {
-      const dirPath = document.getElementById('dirPathInput').value.trim();
-      const startBtn = document.getElementById('startBtn');
-      const stopBtn = document.getElementById('stopBtn');
-      const portBtn = document.getElementById('port');
-
-      if (!dirPath) {
-        showStatus('❌ 请先输入静态资源目录路径', 'error');
-        return;
-      }
-      const pathRegex = /^[a-zA-Z]:\\[^\\/:*?"<>|\r\n]+(?:\\[^\\/:*?"<>|\r\n]+)*$|^\/[^\/:*?"<>|\r\n]+(?:\/[^\/:*?"<>|\r\n]+)*$/;
-
-      if (!pathRegex.test(dirPath)) {
-        showStatus('❌ 请输入一个有效的目录路径<br>例如：C:\\projects\\site', 'error');
-        return;
-      }
-      startBtn.disabled = true;
-      try {
-        await ipcRenderer.invoke('start-server', dirPath, portBtn.value.trim());
-        portBtn.disabled = true;
-      } catch (err) {
-        showStatus(`❌ 启动失败: ${err.message || '未知错误'}`, 'error');
-        startBtn.disabled = false;
-      }
-    }
-
-    async function stopService() {
-      const statusEl = document.getElementById('status');
-      const startBtn = document.getElementById('startBtn');
-      const stopBtn = document.getElementById('stopBtn');
-
-      try {
-        await ipcRenderer.invoke('stop-service');
-      } catch (err) {
-        showStatus(`❌ 停止失败: ${err.message || '未知错误'}`, 'error');
-        return;
-      }
-    }
-
-    ipcRenderer.on('start-server-result', (event, result) => {
-      const startBtn = document.getElementById('startBtn');
-      const stopBtn = document.getElementById('stopBtn');
-
-      if (result.success) {
-        isServiceRunning = true;
-        showStatus(result.message, 'success');
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-      } else {
-        isServiceRunning = false;
-        showStatus(`❌ ${result.message}`, 'error');
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-      }
-    });
-
-    ipcRenderer.on('stop-service-result', (event, result) => {
-      const startBtn = document.getElementById('startBtn');
-      const stopBtn = document.getElementById('stopBtn');
-      const portBtn = document.getElementById('port');
-
-      if (result.success) {
-        isServiceRunning = false;
-        showStatus(result.message, 'info');
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-        if (result.message.includes('服务已关闭')) {
-          portBtn.disabled = false;
-
-        }
-      } else {
-        showStatus(result.message, 'error');
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-      }
-    });
-
-    function minimizeWindow() {
-      ipcRenderer.send('window-minimize');
-    }
-
-    function closeWindow() {
-      ipcRenderer.send('window-close');
-    }
-  </script>
+  <!-- Toast 容器 -->
+  <div id="toastContainer" style="
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  pointer-events: none;
+  width: 300px;
+"></div>
 </body>
+
+<script>
+  const { ipcRenderer } = require('electron');
+  window.addEventListener('DOMContentLoaded', async () => {
+    const dirPathInput = document.getElementById('dirPathInput');
+
+    try {
+      const lastDir = await ipcRenderer.invoke('get-last-dir');
+      if (lastDir && lastDir.trim() !== '') {
+        dirPathInput.value = lastDir;
+        console.log('[UI] 已自动填充上次的路径:', lastDir);
+      }
+    } catch (err) {
+      console.error('[UI] 获取上次路径失败:', err);
+    }
+  });
+  let isServiceRunning = false;
+
+  function showStatus(message, type = 'info') {
+    const statusEl = document.getElementById('status');
+    if (!statusEl) return;
+
+    statusEl.className = 'status';
+    statusEl.innerHTML = message;
+    statusEl.classList.add(type);
+  }
+
+  async function copyAddress() {
+    const addressInput = document.querySelector('.address-input');
+    const portInput = document.getElementById('port');
+    const copyBtn = document.getElementById('copyBtn');
+
+    const address = addressInput.value || 'http://localhost:';
+    const port = portInput.value || '9999';
+    const fullAddress = `${address}${port}`;
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(fullAddress);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = fullAddress;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        if (!successful) throw new Error('复制失败');
+      }
+
+      const originalText = copyBtn.textContent;
+      copyBtn.textContent = '✓';
+      copyBtn.classList.add('copied');
+
+      showToast(`✅ 地址已复制: ${fullAddress}`, 'success');
+
+      setTimeout(() => {
+        copyBtn.textContent = originalText;
+        copyBtn.classList.remove('copied');
+      }, 1500);
+
+    } catch (error) {
+      console.error('复制失败:', error);
+      showToast('❌ 复制失败，请手动复制地址', 'error');
+    }
+  }
+
+  async function startService() {
+    const dirPath = document.getElementById('dirPathInput').value.trim();
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const portBtn = document.getElementById('port');
+
+    if (!dirPath) {
+      showStatus('❌ 请先输入静态资源目录路径', 'error');
+      return;
+    }
+    const pathRegex = /^[a-zA-Z]:\\[^\\/:*?"<>|\r\n]+(?:\\[^\\/:*?"<>|\r\n]+)*$|^\/[^\/:*?"<>|\r\n]+(?:\/[^\/:*?"<>|\r\n]+)*$/;
+
+    if (!pathRegex.test(dirPath)) {
+      showStatus('❌ 请输入一个有效的目录路径 例如：C:\\projects\\site', 'error');
+      return;
+    }
+    startBtn.disabled = true;
+    try {
+      await ipcRenderer.invoke('start-server', dirPath, portBtn.value.trim());
+      portBtn.disabled = true;
+    } catch (err) {
+      showStatus(`❌ 启动失败: ${err.message || '未知错误'}`, 'error');
+      startBtn.disabled = false;
+    }
+  }
+
+  async function stopService() {
+    const statusEl = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    try {
+      await ipcRenderer.invoke('stop-service');
+    } catch (err) {
+      showStatus(`❌ 停止失败: ${err.message || '未知错误'}`, 'error');
+      return;
+    }
+  }
+  async function openDataDirectory() {
+    try {
+      const userDataPath = await ipcRenderer.invoke('get-user-data-dir');
+      const { shell } = require('electron');
+      shell.openPath(userDataPath).catch(err => {
+        console.error('无法打开数据目录:', err);
+        showToast('无法打开配置目录，路径为：\n' + userDataPath, 'error');
+      });
+    } catch (err) {
+      console.error('获取用户数据目录失败:', err);
+      showToast('无法获取配置目录路径', 'error');
+    }
+  }
+  ipcRenderer.on('start-server-result', (event, result) => {
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    if (result.success) {
+      isServiceRunning = true;
+      showStatus(result.message, 'success');
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    } else {
+      isServiceRunning = false;
+      showStatus(`❌ ${result.message}`, 'error');
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+  });
+
+  ipcRenderer.on('stop-service-result', (event, result) => {
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const portBtn = document.getElementById('port');
+
+    if (result.success) {
+      isServiceRunning = false;
+      showStatus(result.message, 'info');
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      if (result.message.includes('服务已关闭')) {
+        portBtn.disabled = false;
+
+      }
+    } else {
+      showStatus(result.message, 'error');
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+  });
+
+  function minimizeWindow() {
+    ipcRenderer.send('window-minimize');
+  }
+
+  function closeWindow() {
+    ipcRenderer.send('window-close');
+  }
+
+  function showToast(message, type = 'info', duration = 3000) {
+    const typeColors = {
+      success: '#d4edda',
+      error: '#f8d7da',
+      info: '#d1ecf1'
+    };
+    const bgColor = typeColors[type] || typeColors.info;
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+    background: ${bgColor};
+    color: ${type === 'error' ? '#721c24' : type === 'success' ? '#155724' : '#0c5460'};
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    font-size: 14px;
+    position: relative;
+    pointer-events: auto;
+    transform: translateX(100%);
+    opacity: 0;
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+    border-left: 4px solid ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8'};
+    word-wrap: break-word;
+  `;
+    toast.textContent = message;
+
+    const closeBtn = document.createElement('span');
+    closeBtn.innerHTML = ' ×';
+    closeBtn.style.cssText = `
+    float: right;
+    cursor: pointer;
+    font-weight: bold;
+    margin-left: 8px;
+    opacity: 0.7;
+  `;
+    closeBtn.onclick = () => {
+      toast.remove();
+      // 可选：处理队列
+    };
+    toast.appendChild(closeBtn);
+
+    const container = document.getElementById('toastContainer');
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)';
+      toast.style.opacity = '1';
+    }, 10);
+
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)';
+      toast.style.opacity = '0';
+      setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+      }, 300);
+    }, duration);
+  }
+</script>
 
 </html>
