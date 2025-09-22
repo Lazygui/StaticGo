@@ -7,9 +7,11 @@
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder",
-    "dist": "electron-builder --win --x64 --publish=never"
+    "start": "cross-env NODE_ENV=development electron .",
+    "build": "cross-env NODE_ENV=production electron-builder",
+    "dist": "cross-env NODE_ENV=production electron-builder --win --x64 --publish=never",
+    "dev:vite": "cd html && npm run dev",
+    "dev": "concurrently \"pnpm run dev:vite\" \"wait-on http://localhost:5173 && pnpm run start\""
   },
   "build": {
     "appId": "com.example.html-exe",
@@ -24,8 +26,11 @@
     }
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.0.0",
     "electron": "^38.1.1",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "wait-on": "^9.0.1"
   },
   "dependencies": {
     "express": "^5.1.0"

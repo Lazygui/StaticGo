@@ -1,11 +1,12 @@
 const { app, BrowserWindow, ipcMain } = require('electron/main');
 const express = require('express');
-const path = require('path');
+const { join } = require('path');
 const fs = require('fs');
 let activeConnections = 0;
 let mainWindow;
 let staticServer = null;
 let staticServerInstance = null;
+const isDev = process.env.NODE_ENV === 'development';
 
 // =============================================
 // 🔧 新增：路径记忆功能 —— 开始
@@ -15,7 +16,7 @@ const getUserDataDir = () => app.getPath('userData');
 const getLastUsedDirPath = () => {
        try {
               const userDataDir = getUserDataDir();
-              const configPath = path.join(userDataDir, 'lastDir.json');
+              const configPath = join(userDataDir, 'lastDir.json');
               if (fs.existsSync(configPath)) {
                      const data = fs.readFileSync(configPath, 'utf-8');
                      const config = JSON.parse(data);
@@ -30,7 +31,7 @@ const getLastUsedDirPath = () => {
 const saveLastUsedDirPath = (dirPath) => {
        try {
               const userDataDir = getUserDataDir();
-              const configPath = path.join(userDataDir, 'lastDir.json');
+              const configPath = join(userDataDir, 'lastDir.json');
               fs.writeFileSync(configPath, JSON.stringify({ lastDirPath: dirPath }, null, 2), 'utf-8');
        } catch (err) {
               console.error('[路径记忆] 保存 lastDir.json 失败:', err);
@@ -71,12 +72,16 @@ const createWindow = () => {
                      contextIsolation: false, // 注意：为了简化，保持为 false，生产环境建议隔离
               },
        });
-
-       mainWindow.loadFile('index.html');
+       if (isDev) {
+              mainWindow.loadURL('http://localhost:5173');
+              mainWindow.webContents.openDevTools();
+       } else {
+              mainWindow.loadFile(join(__dirname, './html/dist/index.html'));
+       }
 
        // 处理窗口控制消息
        ipcMain.on('window-minimize', () => {
-              if (mainWindow) mainWindow.minimize();
+              if (mainWindow) mainWindow.minimize({ mode: 'detach' });
        });
 
        ipcMain.on('window-close', () => {
