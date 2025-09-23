@@ -12,6 +12,7 @@ update_and_restart*
 node_modules
 dist
 dist-ssr
+go
 *.local
 pnpm-lock.yaml
 # Editor directories and files
