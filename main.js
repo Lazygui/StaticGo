@@ -69,12 +69,12 @@ const createWindow = () => {
               frame: false, // 隐藏默认边框
               webPreferences: {
                      nodeIntegration: true,
-                     contextIsolation: false, // 注意：为了简化，保持为 false，生产环境建议隔离
+                     contextIsolation: false,
               },
        });
        if (isDev) {
               mainWindow.loadURL('http://localhost:5173');
-              mainWindow.webContents.openDevTools();
+              mainWindow.webContents.openDevTools({ mode: 'undocked' });
        } else {
               mainWindow.loadFile(join(__dirname, './html/dist/index.html'));
        }

@@ -9,7 +9,8 @@
   "scripts": {
     "start": "cross-env NODE_ENV=development electron .",
     "build": "cross-env NODE_ENV=production electron-builder",
-    "dist": "cross-env NODE_ENV=production electron-builder --win --x64 --publish=never",
+    "dist": "pnpm run build:vite && cross-env NODE_ENV=production electron-builder --win --x64 --publish=never",
+    "build:vite": "cd html && pnpm run build",
     "dev:vite": "cd html && pnpm run dev",
     "dev": "concurrently \"pnpm run dev:vite\" \"wait-on http://localhost:5173 && pnpm run start\""
   },
@@ -19,6 +20,10 @@
     "directories": {
       "output": "go"
     },
+    "files": [
+      "main.js",
+      "html/dist/**/*"
+    ],
     "win": {
       "target": "portable",
       "icon": "StaticGo.ico",
